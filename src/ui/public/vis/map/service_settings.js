@@ -26,21 +26,22 @@ import { i18n } from '@kbn/i18n';
 
 const markdownIt = new MarkdownIt({
   html: false,
-  linkify: true
+  linkify: true,
 });
 
 const TMS_IN_YML_ID = 'TMS in config/kibana.yml';
 
-uiModules.get('kibana')
+uiModules
+  .get('kibana')
   .service('serviceSettings', function ($http, $sanitize, mapConfig, tilemapsConfig, kbnVersion) {
-
-    const attributionFromConfig = $sanitize(markdownIt.render(tilemapsConfig.deprecated.config.options.attribution || ''));
-    const tmsOptionsFromConfig = _.assign({}, tilemapsConfig.deprecated.config.options, { attribution: attributionFromConfig });
-
+    const attributionFromConfig = $sanitize(
+      markdownIt.render(tilemapsConfig.deprecated.config.options.attribution || '')
+    );
+    const tmsOptionsFromConfig = _.assign({}, tilemapsConfig.deprecated.config.options, {
+      attribution: attributionFromConfig,
+    });
     class ServiceSettings {
-
       constructor() {
-
         this._showZoomMessage = true;
 
         this._emsClient = new EMSClientV66({
@@ -48,9 +49,8 @@ uiModules.get('kibana')
           kbnVersion: kbnVersion,
           manifestServiceUrl: mapConfig.manifestServiceUrl,
           htmlSanitizer: $sanitize,
-          landingPageUrl: mapConfig.emsLandingPageUrl
+          landingPageUrl: mapConfig.emsLandingPageUrl,
         });
-
       }
 
       shouldShowZoomMessage({ origin }) {
@@ -71,19 +71,17 @@ uiModules.get('kibana')
             if (this._emsClient._getManifest !== oldGetManifest) {
               this._emsClient._getManifest = oldGetManifest;
             }
-          }
+          },
         };
       }
 
       async getFileLayers() {
-
         if (!mapConfig.includeElasticMapsService) {
           return [];
         }
 
         const fileLayers = await this._emsClient.getFileLayers();
         return fileLayers.map(fileLayer => {
-
           //backfill to older settings
           const format = fileLayer.getDefaultFormatType();
           const meta = fileLayer.getDefaultFormatMeta();
@@ -96,43 +94,39 @@ uiModules.get('kibana')
             attribution: fileLayer.getHTMLAttribution(),
             fields: fileLayer.getFieldsInLanguage(),
             format: format, //legacy: format and meta are split up
-            meta: meta //legacy, format and meta are split up
+            meta: meta, //legacy, format and meta are split up
           };
         });
       }
-
 
       /**
        * Returns all the services published by EMS (if configures)
        * It also includes the service configured in tilemap (override)
        */
       async getTMSServices() {
-
         let allServices = [];
-        if (tilemapsConfig.deprecated.isOverridden) {//use tilemap.* settings from yml
+        if (tilemapsConfig.deprecated.isOverridden) {
+          //use tilemap.* settings from yml
           const tmsService = _.cloneDeep(tmsOptionsFromConfig);
           tmsService.id = TMS_IN_YML_ID;
           tmsService.origin = ORIGIN.KIBANA_YML;
           allServices.push(tmsService);
         }
-
-
-        if  (mapConfig.includeElasticMapsService) {
+        if (mapConfig.includeElasticMapsService) {
           const servicesFromManifest = await this._emsClient.getTMSServices();
-          const strippedServiceFromManifest = servicesFromManifest.map((service) => {
+          const strippedServiceFromManifest = servicesFromManifest.map(service => {
             //shim for compatibility
             const shim = {
               origin: service.getOrigin(),
               id: service.getId(),
               minZoom: service.getMinZoom(),
               maxZoom: service.getMaxZoom(),
-              attribution: service.getHTMLAttribution()
+              attribution: service.getHTMLAttribution(),
             };
             return shim;
           });
           allServices = allServices.concat(strippedServiceFromManifest);
         }
-
         return allServices;
       }
 
@@ -148,13 +142,12 @@ uiModules.get('kibana')
       async getEMSHotLink(fileLayerConfig) {
         const fileLayers = await this._emsClient.getFileLayers();
         const layer = fileLayers.find(fileLayer => {
-          const hasIdByName =  fileLayer.hasId(fileLayerConfig.name);//legacy
-          const hasIdById =  fileLayer.hasId(fileLayerConfig.id);
+          const hasIdByName = fileLayer.hasId(fileLayerConfig.name); //legacy
+          const hasIdById = fileLayer.hasId(fileLayerConfig.id);
           return hasIdByName || hasIdById;
         });
-        return  (layer) ? layer.getEMSHotLink() : null;
+        return layer ? layer.getEMSHotLink() : null;
       }
-
 
       async _getUrlTemplateForEMSTMSLayer(tmsServiceConfig) {
         const tmsServices = await this._emsClient.getTMSServices();
@@ -165,7 +158,6 @@ uiModules.get('kibana')
       }
 
       async getUrlTemplateForTMSLayer(tmsServiceConfig) {
-
         if (tmsServiceConfig.origin === ORIGIN.EMS) {
           return this._getUrlTemplateForEMSTMSLayer(tmsServiceConfig);
         } else if (tmsServiceConfig.origin === ORIGIN.KIBANA_YML) {
@@ -179,14 +171,13 @@ uiModules.get('kibana')
             return this._getUrlTemplateForEMSTMSLayer(tmsServiceConfig);
           }
         }
-
       }
 
       async _getFileUrlFromEMS(fileLayerConfig) {
         const fileLayers = await this._emsClient.getFileLayers();
         const layer = fileLayers.find(fileLayer => {
-          const hasIdByName =  fileLayer.hasId(fileLayerConfig.name);//legacy
-          const hasIdById =  fileLayer.hasId(fileLayerConfig.id);
+          const hasIdByName = fileLayer.hasId(fileLayerConfig.name); //legacy
+          const hasIdById = fileLayer.hasId(fileLayerConfig.id);
           return hasIdByName || hasIdById;
         });
 
@@ -201,10 +192,16 @@ uiModules.get('kibana')
         let url;
         if (fileLayerConfig.origin === ORIGIN.EMS) {
           url = this._getFileUrlFromEMS(fileLayerConfig);
-        } else if (fileLayerConfig.layerId && fileLayerConfig.layerId.startsWith(`${ORIGIN.EMS}.`)) {
+        } else if (
+          fileLayerConfig.layerId &&
+          fileLayerConfig.layerId.startsWith(`${ORIGIN.EMS}.`)
+        ) {
           //fallback for older saved objects
           url = this._getFileUrlFromEMS(fileLayerConfig);
-        } else if (fileLayerConfig.layerId && fileLayerConfig.layerId.startsWith(`${ORIGIN.KIBANA_YML}.`)) {
+        } else if (
+          fileLayerConfig.layerId &&
+          fileLayerConfig.layerId.startsWith(`${ORIGIN.KIBANA_YML}.`)
+        ) {
           //fallback for older saved objects
           url = fileLayerConfig.url;
         } else {
@@ -218,11 +215,10 @@ uiModules.get('kibana')
         const url = await this.getUrlForRegionLayer(fileLayerConfig);
         const json = await $http({
           url: url,
-          method: 'GET'
+          method: 'GET',
         });
         return json.data;
       }
-
     }
 
     return new ServiceSettings();
